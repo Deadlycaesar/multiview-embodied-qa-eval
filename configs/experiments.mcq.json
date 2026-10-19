@@ -1,0 +1,28 @@
+{
+  "schema_version": 2,
+  "default_model": "qwen3vl",
+  "models": {"qwen3vl": "configs/models/qwen3vl.json", "qwen35": "configs/models/qwen35.json"},
+  "dataset": {
+    "adapter": "mvqa", "repo_id": "ee6008/multiview-embodied-qa-week9-yang",
+    "revision": "41d03c57350430d2a55274308e8488b21f28db9a",
+    "subset": "mvqa-local-v1",
+    "questions_sha256": "e435680010b5d6ea6247e41c4bd5ce6bba890058bca8df52a3a04c2bcdf147fd",
+    "offset": 0, "count": 280, "snapshot_dir": null
+  },
+  "generation": {"do_sample": false, "num_beams": 1},
+  "runtime": {"warmup_per_condition": 1},
+  "white_image": {"mode": "generated", "path": null, "size": 512},
+  "prompts": {
+    "version": "answer-format-v2-variable-options", "placement": "user_suffix",
+    "mcq": "Answer with only the label of one of the provided options. Do not explain.",
+    "short": "Answer with a short, direct answer. Do not explain.", "none": ""
+  },
+  "experiments": {
+    "white_mcq": {"images": "white", "mode": "mcq", "prompt": "mcq", "max_new_tokens": 64},
+    "single_mcq": {"images": "first1", "mode": "mcq", "prompt": "mcq", "max_new_tokens": 64},
+    "dual_mcq": {"images": "first2", "mode": "mcq", "prompt": "mcq", "max_new_tokens": 64},
+    "multi_mcq": {"images": "all", "mode": "mcq", "prompt": "mcq", "max_new_tokens": 64},
+    "multi_open": {"images": "all", "mode": "open", "prompt": "none", "max_new_tokens": 64}
+  },
+  "storage": {"data_dir": "data", "model_cache_dir": "weights", "runs_dir": "runs"}
+}

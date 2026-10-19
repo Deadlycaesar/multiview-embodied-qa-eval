@@ -1,0 +1,10 @@
+torch==2.8.0
+torchvision==0.23.0
+transformers==4.57.6
+huggingface-hub==0.36.2
+Pillow==12.3.0
+
+# Qwen/Qwen3-VL-4B-Instruct runs on the pinned stack above.
+# Qwen/Qwen3.5-4B (model_type qwen3_5) needs transformers from git main:
+#   pip install "git+https://github.com/huggingface/transformers.git@main"
+# Upgrade only for the qwen35 runs and do not mix results across environments.

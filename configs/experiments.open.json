@@ -1,0 +1,14 @@
+{
+  "schema_version": 2,
+  "extends": "configs/experiments.mcq.json",
+  "dataset": {
+    "adapter": "mvqa", "repo_id": "ee6008/multiview-embodied-qa-week9-yang",
+    "revision": "41d03c57350430d2a55274308e8488b21f28db9a",
+    "subset": "mvqa-open-v1",
+    "questions_sha256": "2162bb32184c97fff586083bc2c17640da2aaba252298233fb4381aee6cdd54f",
+    "offset": 0, "count": 188, "snapshot_dir": null
+  },
+  "experiments": {
+    "multi_open": {"images": "all", "mode": "open", "prompt": "none", "max_new_tokens": 64}
+  }
+}

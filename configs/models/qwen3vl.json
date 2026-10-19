@@ -1,0 +1,6 @@
+{
+  "adapter": "qwen3vl", "repo_id": "Qwen/Qwen3-VL-4B-Instruct",
+  "revision": "ebb281ec70b05090aa6165b016eac8ec08e71b17",
+  "device": "cuda", "dtype": "bfloat16", "seed": 0,
+  "attn_implementation": "eager", "processor": {"min_pixels": 200704, "max_pixels": 802816}
+}

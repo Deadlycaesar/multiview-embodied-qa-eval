@@ -1,0 +1,18 @@
+.venv/
+__pycache__/
+*.pyc
+.env*
+.DS_Store
+.cache/
+/.test-tmp/
+/data/
+/weights/
+/runs/
+
+# Local historical documents, exploration templates and visualization artifacts.
+/_local_archive/
+
+# Only the top-level and configs READMEs belong in the repository.
+*.md
+!/README.md
+!/configs/README.md

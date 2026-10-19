@@ -1,0 +1,8 @@
+{
+  "base_url": "",
+  "model": "",
+  "api_key_env": "JUDGE_API_KEY",
+  "temperature": 0,
+  "max_tokens": 256,
+  "timeout": 60
+}
