@@ -31,12 +31,13 @@ class JudgeTests(unittest.TestCase):
             "content": json.dumps(verdict)}}]}).encode())
 
     @patch.dict(os.environ, {"JUDGE_API_KEY": "test-only-secret"})
-    def test_deepseek_options_and_credentials(self):
+    def test_jev_options_and_credentials(self):
         with patch("evaluation.metrics.judge.urlopen", return_value=self.response({"correct": True})) as call:
             result = judge_answer(self.sample, "A", "mcq", self.config)
         request = call.call_args.args[0]
         payload = json.loads(request.data)
-        self.assertEqual(payload["thinking"], {"type": "disabled"})
+        self.assertEqual(payload["model"], "jev")
+        self.assertNotIn("thinking", payload)
         self.assertEqual(payload["response_format"], {"type": "json_object"})
         self.assertEqual(request.get_header("Authorization"), "Bearer test-only-secret")
         self.assertNotIn("test-only-secret", json.dumps(result))

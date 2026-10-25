@@ -23,6 +23,7 @@ class InferenceRequest:
     max_new_tokens: int
     generation: dict
     metadata: dict = field(default_factory=dict)
+    option_labels: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -33,7 +34,11 @@ class GenerationResult:
     reached_token_limit: bool
     generation_seconds: float
     input_tokens: int
+    visual_tokens: int
     peak_allocated_bytes: int | None
     peak_reserved_bytes: int | None
     rendered_prompt: str
     effective_generation: dict
+    option_probs: dict[str, float] | None
+    option_probs_status: str
+    option_probs_version: str | None

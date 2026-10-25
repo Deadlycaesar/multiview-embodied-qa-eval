@@ -8,17 +8,50 @@ from datetime import datetime, timezone
 from ..datasets import load_samples
 from ..models import load_model
 from ..protocols import build_request
+from ..protocols.plans import load_view_plan, select_sample_set
 from .config import read_config
+from .distribution import inference_protocol
 from .io import digest, file_hash, lock, now, read_json, read_jsonl, sources, versions, write_json, write_jsonl
-from .paths import ROOT, project_path, storage_paths
+from .paths import project_path, storage_paths
 
 
 def prepare(config):
     data_dir = storage_paths(config)["data_dir"]
     samples = load_samples(config["dataset"], data_dir)
-    requests = {name: [build_request(sample, experiment, config, data_dir / "assets") for sample in samples]
-                for name, experiment in config["experiments"].items()}
+    sample_map = {sample.id: sample for sample in samples}
+    planned = load_view_plan(project_path(config["view_plan"]), samples) if config.get("view_plan") else {}
+    requests = {}
+    for name, experiment in config["experiments"].items():
+        selected = select_sample_set(samples, experiment["sample_set"])
+        if experiment["views"] == "plan":
+            selected_ids = {sample.id for sample in selected}
+            rows = planned.get(name, [])
+            if {row["qid"] for row in rows} != selected_ids:
+                raise ValueError(f"{name}: view-plan sample set does not match {experiment['sample_set']}")
+            requests[name] = [build_request(sample_map[row["qid"]], experiment, config,
+                                            data_dir / "assets", row) for row in rows]
+        else:
+            requests[name] = [build_request(sample, experiment, config, data_dir / "assets")
+                              for sample in selected]
     return samples, requests
+
+
+def preflight(config):
+    _, requests = prepare(config)
+    model = load_model(config["model"], storage_paths(config)["model_cache_dir"])
+    labels = sorted({label for rows in requests.values() for request in rows for label in request.option_labels})
+    processor = getattr(model, "processor", None)
+    tokenizer = getattr(model, "tokenizer", None)
+    if tokenizer is None:
+        tokenizer = getattr(processor, "tokenizer", processor)
+    if tokenizer is None:
+        raise ValueError("Model adapter does not expose a tokenizer for preflight")
+    invalid = [label for label in labels if len(tokenizer.encode(label, add_special_tokens=False)) != 1]
+    if invalid:
+        raise ValueError(f"Option labels are not single tokens for this model: {invalid}")
+    return {"model_key": config["model_key"], "model_class": type(model).__name__,
+            "conditions": {name: len(rows) for name, rows in requests.items()},
+            "option_labels": labels, "metadata": model.metadata()}
 
 
 def run(config, run_dir, resume=False):
@@ -39,7 +72,9 @@ def run(config, run_dir, resume=False):
     environment = {**versions(("torch", "torchvision", "transformers", "huggingface-hub", "Pillow", "tokenizers", "numpy", "safetensors")),
                    "python": platform.python_version(), "platform": platform.platform()}
     identity = digest([config, sample_rows, request_rows, image_hashes, source_hashes, environment])
-    manifest = {"schema_version": 2, "config": config, "fingerprint": identity,
+    protocol = inference_protocol(config)
+    manifest = {"schema_version": 4, "config": config, "fingerprint": identity,
+                "protocol": protocol, "protocol_hash": digest(protocol),
                 "source_sha256": source_hashes, "environment": environment, "image_sha256": image_hashes,
                 "samples_sha256": digest(sample_rows), "requests_sha256": digest(request_rows), "created_at": now()}
     run_dir.mkdir(parents=True, exist_ok=resume)
@@ -104,12 +139,13 @@ def run(config, run_dir, resume=False):
 def main():
     parser = argparse.ArgumentParser(description="Multiview embodied QA evaluation")
     commands = parser.add_subparsers(dest="command", required=True)
-    for command in ("prepare", "run"):
+    for command in ("prepare", "preflight", "run"):
         sub = commands.add_parser(command)
         sub.add_argument("--config", default="configs/experiments.mcq.json")
-        sub.add_argument("--model", help="Model key from shared config: qwen3vl or qwen35")
+        sub.add_argument("--model", help="Model key from the shared config")
         sub.add_argument("--experiments", nargs="+")
         sub.add_argument("--limit", type=int)
+        sub.add_argument("--offset", type=int, help="Smoke-test dataset offset; requires --limit")
         if command == "run":
             sub.add_argument("--run-dir")
             sub.add_argument("--resume", action="store_true")
@@ -118,10 +154,18 @@ def main():
     score.add_argument("--metrics-config", default="configs/metrics.json")
     score.add_argument("--judge-config", help="Explicitly enable external Judge calls")
     score.add_argument("--bertscore", action="store_true", help="Explicitly load the pinned BERTScore model")
+    validate = commands.add_parser("validate")
+    validate.add_argument("--run-dir", required=True, help="Run directory or exported result bundle")
+    validate.add_argument("--bundle", action="store_true")
+    validate.add_argument("--complete", action="store_true", help="Require complete predictions and scores")
+    export = commands.add_parser("export")
+    export.add_argument("--run-dir", required=True)
+    export.add_argument("--output-dir", required=True)
+    export.add_argument("--complete", action="store_true", help="Refuse to export an incomplete result")
     analyze = commands.add_parser("analyze")
     analyze.add_argument("--run-dirs", nargs="+", required=True)
     analyze.add_argument("--score-ids", nargs="+", help="One score ID per run directory; defaults to latest for each run")
-    analyze.add_argument("--plots", action="store_true", help="Also export efficiency PNG/SVG figures using matplotlib")
+    analyze.add_argument("--plots", action="store_true", help="Also export accuracy-visual-token PNG/SVG figures")
     analyze.add_argument("--output-dir", required=True)
     args = parser.parse_args()
     if args.command == "score":
@@ -130,12 +174,28 @@ def main():
                            read_json(project_path(args.judge_config)) if args.judge_config else None, args.bertscore)
         print(f"Scores: {result['score_dir']}")
         return int(not result["complete"])
+    if args.command in ("validate", "export"):
+        from .distribution import export_run, validate_bundle, validate_run
+        if args.command == "export":
+            result = export_run(args.run_dir, args.output_dir, args.complete)
+        elif args.bundle:
+            result = validate_bundle(args.run_dir, args.complete)
+        else:
+            result = validate_run(args.run_dir, args.complete)
+        print(result)
+        return 0
     if args.command == "analyze":
         from ..analysis.comparisons import analyze_runs
         result = analyze_runs([project_path(path) for path in args.run_dirs], project_path(args.output_dir), args.score_ids, args.plots)
         print(f"Analysis: {result}")
         return 0
-    config = read_config(args.config, args.experiments, args.limit, args.model)
+    config = read_config(args.config, args.experiments, args.limit, args.model, args.offset)
+    if args.command == "preflight":
+        result = preflight(config)
+        metadata = result.pop("metadata")
+        result.update(device=metadata["device"], dtype=metadata["dtype"], resolved_model_class=metadata["model_class"])
+        print(result)
+        return 0
     if args.command == "prepare":
         samples, requests = prepare(config)
         rows = {name: [asdict(request) for request in values] for name, values in requests.items()}

@@ -1,0 +1,10 @@
+{
+  "adapter": "minicpmv4",
+  "repo_id": "openbmb/MiniCPM-V-4",
+  "revision": "6f69a8235885be89608f3a71ffd40695b379e1e7",
+  "device": "cuda",
+  "dtype": "bfloat16",
+  "seed": 0,
+  "attn_implementation": "sdpa",
+  "trust_remote_code": true
+}

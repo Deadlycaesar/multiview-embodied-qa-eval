@@ -4,8 +4,8 @@ from ..core.schemas import InferenceRequest
 from .views import select_views
 
 
-def build_request(sample, experiment, config, assets_dir):
-    images, view_info = select_views(sample, experiment["images"], config["white_image"], assets_dir)
+def build_request(sample, experiment, config, assets_dir=None, plan_row=None):
+    images, view_info = select_views(sample, experiment["views"], plan_row)
     text = sample.question
     if experiment["mode"] == "mcq":
         if not sample.choices:
@@ -23,4 +23,5 @@ def build_request(sample, experiment, config, assets_dir):
         {**view_info, "mode": experiment["mode"], "prompt_variant": experiment["prompt"],
          "prompt_version": config["prompts"]["version"], "instruction": instruction,
          "prompt_placement": config["prompts"]["placement"]},
+        option_labels=list(sample.choices) if experiment["mode"] == "mcq" else [],
     )

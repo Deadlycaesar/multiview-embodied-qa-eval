@@ -33,6 +33,7 @@ def read_json(path):
 
 
 def write_jsonl(path, rows):
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("".join(json.dumps(row, ensure_ascii=False, allow_nan=False) + "\n" for row in rows), encoding="utf-8")
 
 

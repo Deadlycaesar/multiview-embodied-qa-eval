@@ -16,3 +16,4 @@ __pycache__/
 *.md
 !/README.md
 !/configs/README.md
+!/configs/PROTOCOL.md

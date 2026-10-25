@@ -1,0 +1,10 @@
+{
+  "adapter": "internvl35",
+  "repo_id": "OpenGVLab/InternVL3_5-4B",
+  "revision": "481f6e32467eab4e922ccd7fd6cf420441a62331",
+  "device": "cuda",
+  "dtype": "bfloat16",
+  "seed": 0,
+  "attn_implementation": "eager",
+  "trust_remote_code": true
+}
