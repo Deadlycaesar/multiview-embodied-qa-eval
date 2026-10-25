@@ -1,4 +1,4 @@
-"""Run from the repository directory: python run.py prepare|run|score."""
+"""Run from the repository directory: python run.py <command> --help."""
 
 import importlib.util
 import sys

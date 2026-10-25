@@ -1,0 +1,10 @@
+{
+  "adapter": "molmo2",
+  "repo_id": "allenai/Molmo2-4B",
+  "revision": "042abfa7a38879a376cec03d949eff0aefaa0600",
+  "device": "cuda",
+  "dtype": "bfloat16",
+  "seed": 0,
+  "attn_implementation": "eager",
+  "trust_remote_code": true
+}

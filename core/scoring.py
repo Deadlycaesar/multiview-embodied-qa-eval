@@ -8,6 +8,13 @@ from .paths import storage_paths
 from .reporting import summarize, write_report
 
 
+PREDICTION_FIELDS = (
+    "elapsed_seconds", "generation_seconds", "input_tokens", "visual_tokens", "output_tokens",
+    "reached_token_limit", "peak_allocated_bytes", "peak_reserved_bytes", "option_probs",
+    "option_probs_status", "option_probs_version",
+)
+
+
 def validate_metrics(config):
     if not config.get("protocol_version"):
         raise ValueError("Metric protocol version is required")
@@ -33,19 +40,21 @@ def score_run(run_dir, metrics_config, judge_config=None, use_bertscore=False):
         validate_config(metrics_config["bertscore"])
     with lock(run_dir):
         manifest = read_json(run_dir / "manifest.json")
-        if manifest.get("schema_version") != 2:
-            raise ValueError("v2 scoring needs a v2 run; retain old results as historical artifacts")
+        if manifest.get("schema_version") != 4:
+            raise ValueError("v4 scoring requires a v4 run")
         samples = read_jsonl(run_dir / "samples.jsonl")
+        sample_map = {sample["id"]: sample for sample in samples}
         requests = read_json(run_dir / "requests.json")
         if digest(samples) != manifest["samples_sha256"] or digest(requests) != manifest["requests_sha256"]:
             raise ValueError("Saved sample/request manifest was modified")
         predictions, prediction_hashes = {}, {}
-        for name in manifest["config"]["experiments"]:
+        for name, condition_requests in requests.items():
             predictions[name] = []
-            for index, sample in enumerate(samples):
+            for index, request in enumerate(condition_requests):
                 path = run_dir / name / f"{index:04d}.json"
                 prediction = read_json(path) if path.exists() else {"status": "missing", "text": ""}
-                if path.exists() and (prediction.get("sample_id") != sample["id"] or prediction.get("request") != requests[name][index]):
+                if path.exists() and (prediction.get("sample_id") != request["sample_id"]
+                                      or prediction.get("request") != request):
                     raise ValueError("Prediction does not match saved request")
                 if prediction["status"] not in ("ok", "error", "missing"):
                     raise ValueError("Unknown prediction status")
@@ -63,11 +72,10 @@ def score_run(run_dir, metrics_config, judge_config=None, use_bertscore=False):
         if completion_path.exists():
             completion_path.unlink()
         write_json(directory / "manifest.json", {
-            "schema_version": 2, "run_dir": str(run_dir), "run_fingerprint": manifest["fingerprint"],
+            "schema_version": 4, "run_dir": str(run_dir), "run_fingerprint": manifest["fingerprint"],
             "score_id": identity, "protocol_hash": protocol_hash, "protocol": protocol,
             "prediction_sha256": prediction_hashes, "created_at": now(),
         })
-        # Cache identity includes implementation and package versions, not only metric names.
         cache_root = run_dir / "metric-cache" / protocol_hash
         bert = None
         summaries = {}
@@ -75,15 +83,16 @@ def score_run(run_dir, metrics_config, judge_config=None, use_bertscore=False):
         for name, experiment in manifest["config"]["experiments"].items():
             mode = experiment["mode"]
             rows = []
-            for index, (sample, prediction) in enumerate(zip(samples, predictions[name])):
+            for index, (request, prediction) in enumerate(zip(requests[name], predictions[name])):
+                sample = sample_map[request["sample_id"]]
                 ok, text = prediction["status"] == "ok", prediction.get("text", "")
                 row = {"sample_id": sample["id"], "condition": name, "model_key": manifest["config"]["model_key"],
                        "status": prediction["status"], "prediction": text, "reference": sample["references"],
                        "output_words": len(tokens(text)) if ok else 0,
-                       "view_metadata": requests[name][index]["metadata"],
+                       "view_metadata": request["metadata"],
                        "judge_status": "not_configured" if judge_config is None else "prediction_unavailable",
                        "bertscore_status": "not_applicable" if mode == "mcq" else ("not_enabled" if not use_bertscore else "prediction_unavailable")}
-                for field in ("elapsed_seconds", "generation_seconds", "input_tokens", "output_tokens", "reached_token_limit", "peak_allocated_bytes", "peak_reserved_bytes"):
+                for field in PREDICTION_FIELDS:
                     row[field] = prediction.get(field)
                 if mode == "mcq":
                     parsed = extract_choice(text, sample["choices"], metrics_config["choice"]["allow_exact_choice_text"]) if ok else {"letter": None, "parse_status": "prediction_unavailable"}
@@ -92,7 +101,8 @@ def score_run(run_dir, metrics_config, judge_config=None, use_bertscore=False):
                 else:
                     row["token_f1"] = token_f1(text, sample["references"]) if ok else 0.0
                 if judge_config is not None and ok:
-                    key = digest([JUDGE_PROMPT, mode, sample["question"], sample["choices"] if mode == "mcq" else None, sample["references"], sample["answer"], text])
+                    key = digest([JUDGE_PROMPT, mode, sample["question"], sample["choices"] if mode == "mcq" else None,
+                                  sample["references"], sample["answer"], text])
                     path = cache_root / "judge" / (key + ".json")
                     try:
                         verdict = read_json(path) if path.exists() else judge_answer(sample, text, mode, judge_config)
@@ -106,7 +116,6 @@ def score_run(run_dir, metrics_config, judge_config=None, use_bertscore=False):
                 if use_bertscore and mode == "open" and ok:
                     key = digest([sample["references"], text])
                     path = cache_root / "bertscore" / (key + ".json")
-                    # Initialization errors stop scoring; existing prediction/Judge caches remain intact.
                     if bert is None and not path.exists():
                         bert = BertScore(metrics_config["bertscore"], storage_paths(manifest["config"])["model_cache_dir"])
                         write_json(directory / "bertscore-model.json", bert.metadata)

@@ -1,0 +1,5 @@
+torch==2.8.0
+torchvision==0.23.0
+transformers>=5.5.0.dev0,<6
+huggingface-hub>=0.36.2,<3
+Pillow==12.3.0

@@ -1,8 +1,9 @@
 {
   "base_url": "",
-  "model": "",
+  "model": "jev",
   "api_key_env": "JUDGE_API_KEY",
   "temperature": 0,
-  "max_tokens": 256,
-  "timeout": 60
+  "max_tokens": 1024,
+  "timeout": 60,
+  "response_format": {"type": "json_object"}
 }

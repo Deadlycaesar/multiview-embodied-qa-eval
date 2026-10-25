@@ -4,7 +4,6 @@ transformers==4.57.6
 huggingface-hub==0.36.2
 Pillow==12.3.0
 
-# Qwen/Qwen3-VL-4B-Instruct runs on the pinned stack above.
-# Qwen/Qwen3.5-4B (model_type qwen3_5) needs transformers from git main:
-#   pip install "git+https://github.com/huggingface/transformers.git@main"
-# Upgrade only for the qwen35 runs and do not mix results across environments.
+# Default environment for Qwen3-VL and offline tests.
+# Other models use independent environments: requirements/models/<model>.txt.
+# Do not install every model into one environment or mix environment results.

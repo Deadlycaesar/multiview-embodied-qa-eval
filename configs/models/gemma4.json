@@ -1,0 +1,11 @@
+{
+  "adapter": "gemma4",
+  "repo_id": "google/gemma-4-E4B-it",
+  "revision": "ee0ef6023621cff504d758262d4e04895a5af4a2",
+  "device": "cuda",
+  "dtype": "bfloat16",
+  "seed": 0,
+  "attn_implementation": "eager",
+  "trust_remote_code": false,
+  "chat_template_kwargs": {"enable_thinking": false}
+}

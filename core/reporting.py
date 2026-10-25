@@ -22,7 +22,10 @@ def summarize(rows, mode):
             format_compliance=sum(row["format_compliant"] for row in rows) / count if count else None,
             unparsed=sum(row.get("parse_status") == "unparsed" for row in rows),
             ambiguous=sum(row.get("parse_status") == "ambiguous" for row in rows),
+            option_probs_recorded=sum(row.get("option_probs_status") == "ok" for row in successful),
         )
+        result["option_probs_coverage"] = result["option_probs_recorded"] / count if count else 0
+        result["complete"] = result["complete"] and result["option_probs_recorded"] == count
     else:
         result["token_f1"] = mean(row["token_f1"] for row in rows) if rows else None
     for prefix, value in (("judge", "judge_correct"), ("bertscore", "bertscore_f1")):
@@ -31,7 +34,7 @@ def summarize(rows, mode):
         result[prefix + "_scored"] = len(scored)
         result[prefix + "_coverage"] = len(scored) / count if count else 0
         result[prefix + "_statuses"] = dict(Counter(row[prefix + "_status"] for row in rows))
-    for field in ("elapsed_seconds", "generation_seconds", "output_tokens", "input_tokens", "peak_allocated_bytes", "peak_reserved_bytes"):
+    for field in ("elapsed_seconds", "generation_seconds", "output_tokens", "input_tokens", "visual_tokens", "peak_allocated_bytes", "peak_reserved_bytes"):
         values = [row[field] for row in successful if row.get(field) is not None]
         result["mean_" + field] = mean(values) if values else None
         result["median_" + field] = median(values) if values else None

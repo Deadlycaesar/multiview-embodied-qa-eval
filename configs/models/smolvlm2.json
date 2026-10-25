@@ -1,0 +1,10 @@
+{
+  "adapter": "smolvlm2",
+  "repo_id": "HuggingFaceTB/SmolVLM2-2.2B-Instruct",
+  "revision": "482adb537c021c86670beed01cd58990d01e72e4",
+  "device": "cuda",
+  "dtype": "bfloat16",
+  "seed": 0,
+  "attn_implementation": "eager",
+  "trust_remote_code": false
+}

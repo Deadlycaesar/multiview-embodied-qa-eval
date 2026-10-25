@@ -1,0 +1,11 @@
+{
+  "adapter": "phi4",
+  "repo_id": "microsoft/Phi-4-multimodal-instruct",
+  "revision": "93f923e1a7727d1c4f446756212d9d3e8fcc5d81",
+  "device": "cuda",
+  "dtype": "bfloat16",
+  "seed": 0,
+  "attn_implementation": "eager",
+  "trust_remote_code": true,
+  "visual_token_ids": [200010]
+}

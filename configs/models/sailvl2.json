@@ -1,0 +1,11 @@
+{
+  "adapter": "sailvl2",
+  "repo_id": "BytedanceDouyinContent/SAIL-VL2-2B",
+  "revision": "3c8b3be75dd51ef77b55e5149e7dbdebd2bbe4c5",
+  "device": "cuda",
+  "dtype": "bfloat16",
+  "seed": 0,
+  "attn_implementation": "sdpa",
+  "trust_remote_code": true,
+  "visual_token_ids": [151671]
+}
